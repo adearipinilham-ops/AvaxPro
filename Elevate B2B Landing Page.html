@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpeakBro Lab AI</title>
+    <!-- Gembok Script Styles -->
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }
+        .cl-hidden { display: none !important; }
+        .cl-modal-overlay { position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 999994; background-color: rgba(0,0,0,0.6); gap: 16px; }
+        .cl-modal-box { background: white; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); max-width: 400px; width: 90%; max-height: 90vh; overflow: auto; padding: 32px 24px; text-align: center; }
+        @keyframes cl-spin { to { transform: rotate(360deg); } }
+        .cl-spinner { animation: cl-spin 1s linear infinite; }
+        #cl-app { width: 100%; min-height: 100vh; background-color: transparent; }
+        #license-input { box-sizing: border-box; width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem; outline: none; text-align: center; font-family: monospace; letter-spacing: 1px; transition: border-color 0.15s, box-shadow 0.15s; }
+        #license-input:focus { border-color: #ff7b00 !important; box-shadow: 0 0 0 4px rgba(0,0,0,0.05) !important; }
+        #cl-btn-validate { box-sizing: border-box; width: 100%; padding: 14px 16px; border-radius: 8px; font-weight: 700; color: white; border: none; cursor: pointer; background-color: #3d3d3d; transition: opacity 0.2s; font-size: 16px; }
+        #cl-btn-validate:hover { opacity: 0.9; }
+        #cl-btn-close-msg { margin-top: 24px; box-sizing: border-box; width: 100%; padding: 12px 16px; border-radius: 8px; font-weight: 600; color: white; border: none; cursor: pointer; background-color: #3d3d3d; transition: opacity 0.2s; font-size: 16px; }
+        #cl-btn-close-msg:hover { opacity: 0.9; }
+    </style>
+    <script>
+    (function(){
+        var pid = "16";
+        var savedDec = null;
+        try {
+            if (window.name && window.name.indexOf('{') === 0) {
+                var cache = JSON.parse(window.name);
+                if (cache && cache['cl_dec_key_' + pid]) {
+                    savedDec = cache['cl_dec_key_' + pid];
+                }
+            }
+        } catch(e){}
+        if (!savedDec) {
+            try {
+                savedDec = localStorage.getItem('cl_dec_key_' + pid) || sessionStorage.getItem('cl_dec_key_' + pid);
+            } catch(e){}
+        }
+        if (!savedDec) {
+            try {
+                var state = history.state;
+                if (state && typeof state === 'object' && state['cl_dec_key_' + pid]) {
+                    savedDec = state['cl_dec_key_' + pid];
+                }
+            } catch(e){}
+        }
+        if (!savedDec) {
+            try {
+                var params = new URLSearchParams(window.location.search || window.location.hash.replace('#', '?'));
+                savedDec = params.get('cl_dec') || params.get('cl_dec_key');
+            } catch(e){}
+        }
+        if (savedDec) {
+            var css = '#licenseModal, #license-loader, #messageModal { display: none !important; }';
+            var head = document.head || document.getElementsByTagName('head')[0];
+            var style = document.createElement('style');
+            style.id = 'cl-fast-hide';
+            style.type = 'text/css';
+            style.appendChild(document.createTextNode(css));
+            head.appendChild(style);
+        }
+    })();
+    </script>
+</head>
+<body style="background-color: #f1f5f9;">
+
+    <!-- Loader -->
+    <div id="license-loader" class="cl-modal-overlay cl-hidden">
+        <div class="cl-modal-box">
+            <svg class="cl-spinner" style="width:48px;height:48px;margin:0 auto 16px;color:#ff7b00;" fill="none" viewBox="0 0 24 24">
+                <circle style="opacity: 0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path style="opacity: 0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p style="color: #374151; font-size: 1.125rem; font-weight: 600; margin: 0;">Memverifikasi Lisensi...</p>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="licenseModal" class="cl-modal-overlay" style="background-color:#ff7b00;">
+        <div class="cl-modal-box col-box">
+            <div style="margin-bottom:28px;">
+                <img src="https://sharelink.web.id/wp-content/uploads/2026/07/logo-ok.jpeg" style="max-width:100%;max-height:80px;border-radius:8px;margin:0 auto 20px;display:block;" alt="Logo">
+                <h3 style="font-size:1.25rem; font-weight:700; color:#111827; margin:0 0 8px;">SpeakBro Lab AI</h3>
+                <p style="color:#6b7280; font-size:0.875rem; margin:0;">Masukkan Kunci Licensi Disini</p>
+            </div>
+            
+            <div id="msg-error" class="cl-hidden" style="background:#fef2f2;color:#b91c1c;padding:12px 14px;border-radius:12px;margin-bottom:20px;font-size:13px;font-weight:500;border:1px solid #fecaca;"></div>
+            
+            <div style="margin-bottom:20px;">
+                <input type="text" id="license-input" placeholder="Ketik Lisensi Cth: CL-XXXX">
+            </div>
+            <button type="button" id="cl-btn-validate">
+                Buka Kunci
+            </button>
+        </div>
+        
+    </div>
+
+    <!-- Message Modal -->
+    <div id="messageModal" class="cl-modal-overlay cl-hidden">
+        <div class="cl-modal-box">
+            <div id="msg-icon" style="margin: 0 auto 16px; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center;"></div>
+            <h3 id="msg-title" style="font-size: 1.125rem; font-weight: 700; color: #111827; margin:0 0 8px;"></h3>
+            <p id="msg-text" style="color: #6b7280; font-size: 0.875rem; margin:0;"></p>
+            <button type="button" id="cl-btn-close-msg">Tutup</button>
+        </div>
+    </div>
+
+    <!-- App Container - HIDDEN by default, populated on success -->
+    <div id="cl-app" class="cl-hidden"></div>
+
+    <!-- LOGIKA JAVASCRIPT -->
+    <script>
+    const geminiApiKey = ""; // Tangkap API Key dari environment Gemini Canvas otomatis (Gemini akan replace param kosong ini jadi key asli).
+    (function() {
+        var PROJECT_ID = "16";
+        var API_URL = "https://sharelink.web.id/wp-json/canvas-app/v1/verify";
+        if (API_URL.indexOf('http://') === 0 && window.location.protocol === 'https:') {
+            API_URL = API_URL.replace('http://', 'https://');
+        }
+        var BRAND_COLOR = "#ff7b00";
+        var isValidating = false;
+        var appInjected = false;
+
+        function $(id) { return document.getElementById(id); }
+        function show(id) { var el = $(id); if(el) el.classList.remove('cl-hidden'); }
+        function hide(id) { var el = $(id); if(el) el.classList.add('cl-hidden'); }
+
+        function getFingerprint() {
+            var w = Math.max(screen.width, screen.height);
+            var h = Math.min(screen.width, screen.height);
+            var c = [navigator.userAgent, navigator.language, w, h, new Date().getTimezoneOffset()];
+            return btoa(c.join('|')).slice(0, 32);
+        }
+
+        function showMessage(title, text, success) {
+            $('msg-title').textContent = title;
+            $('msg-text').innerHTML = text;
+            $('msg-icon').innerHTML = success 
+                ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="' + BRAND_COLOR + '" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><path d="m9 11 3 3L22 4"></path></svg>'
+                : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="m15 9-6 6"></path><path d="m9 9 6 6"></path></svg>';
+            $('msg-icon').style.backgroundColor = success ? BRAND_COLOR + '20' : '#fee2e2';
+            hide('licenseModal');
+            hide('license-loader');
+            show('messageModal');
+        }
+
+        var _store = {};
+        function storeSet(key, val) {
+            try { localStorage.setItem(key, val); } catch(e) {}
+            try { sessionStorage.setItem(key, val); } catch(e) {}
+            try {
+                var cache = {};
+                if (window.name && window.name.indexOf('{') === 0) {
+                    cache = JSON.parse(window.name);
+                }
+                cache[key] = val;
+                window.name = JSON.stringify(cache);
+            } catch(ex) {}
+            try {
+                var state = history.state || {};
+                if (typeof state !== 'object') state = {};
+                state[key] = val;
+                history.replaceState(state, document.title);
+            } catch(ex) {}
+            _store[key] = val;
+        }
+        function storeGet(key) {
+            try {
+                if (window.name && window.name.indexOf('{') === 0) {
+                    var cache = JSON.parse(window.name);
+                    if (cache && cache[key]) return cache[key];
+                }
+            } catch(e) {}
+            try {
+                var state = history.state;
+                if (state && typeof state === 'object' && state[key]) {
+                    return state[key];
+                }
+            } catch(ex) {}
+            try { var v = localStorage.getItem(key); if(v) return v; } catch(e) {}
+            try { var v = sessionStorage.getItem(key); if(v) return v; } catch(e) {}
+            return _store[key] || null;
+        }
+        function storeRemove(key) {
+            try { localStorage.removeItem(key); } catch(e) {}
+            try { sessionStorage.removeItem(key); } catch(e) {}
+            try {
+                if (window.name && window.name.indexOf('{') === 0) {
+                    var cache = JSON.parse(window.name);
+                    if (cache) {
+                        delete cache[key];
+                        window.name = JSON.stringify(cache);
+                    }
+                }
+            } catch(ex) {}
+            try {
+                var state = history.state;
+                if (state && typeof state === 'object' && state[key]) {
+                    delete state[key];
+                    history.replaceState(state, document.title);
+                }
+            } catch(ex) {}
+            delete _store[key];
+        }
+
+        function removeFastHide() {
+            try {
+                var el = document.getElementById('cl-fast-hide');
+                if (el && el.parentNode) {
+                    el.parentNode.removeChild(el);
+                }
+            } catch(e){}
+        }
+
+        async function rn(p) {
+            document.documentElement.style.opacity = '0';
+            document.body.style = '';
+            document.body.className = '';
+            
+            var hideIds = ['licenseModal', 'license-loader', 'messageModal'];
+            for(var i=0; i<hideIds.length; i++) {
+                if($(hideIds[i])) $(hideIds[i]).style.display = 'none';
+            }
+
+            var decodedHtml;
+            try {
+                var pTrim = p.trim();
+                var b64Regex = new RegExp('^[a-zA-Z0-9\\+\\/\\=\\s]+$');
+                if (b64Regex.test(pTrim)) {
+                    decodedHtml = decodeURIComponent(atob(pTrim));
+                } else {
+                    decodedHtml = p;
+                }
+            } catch(e) { decodedHtml = p; }
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(decodedHtml, 'text/html');
+
+            const headElements = Array.from(doc.head.childNodes);
+            const bodyHtml = doc.body.innerHTML;
+            const scripts = Array.from(doc.querySelectorAll('script'));
+
+            document.head.innerHTML = '';
+            document.body.innerHTML = '';
+
+            headElements.forEach(el => {
+                if(el.tagName !== 'SCRIPT') document.head.appendChild(el.cloneNode(true));
+            });
+
+            document.body.innerHTML = bodyHtml;
+
+            for(const old of scripts) {
+                await new Promise(res => {
+                    const s = document.createElement('script');
+                    Array.from(old.attributes).forEach(a => s.setAttribute(a.name, a.value));
+                    s.text = old.innerHTML;
+                    if(s.src) {
+                        s.onload = res;
+                        s.onerror = res;
+                    }
+                    if (typeof geminiApiKey !== 'undefined' && geminiApiKey && geminiApiKey.trim() !== '' && !s.src) {
+                        s.text = s.text.replace(/const\s+apiKey\s*=\s*(['"]).*?\s*;/gi, 'const apiKey = "' + geminiApiKey + '";');
+                    }
+                    document.body.appendChild(s);
+                    if(!s.src) res(); 
+                });
+            }
+
+            window['__cl_injected_' + PROJECT_ID] = true;
+
+            if (typeof window.onload === 'function') window.onload(new Event('load'));
+            window.dispatchEvent(new Event('DOMContentLoaded'));
+            document.dispatchEvent(new Event('DOMContentLoaded'));
+            window.dispatchEvent(new Event('load'));
+
+            // If Babel standalone was injected, we might need to manually trigger it
+            if (typeof Babel !== 'undefined' && Babel.transformScriptTags) {
+                Babel.transformScriptTags();
+            }
+
+            setTimeout(() => {
+                document.documentElement.style.transition = 'opacity 0.3s ease-in-out';
+                document.documentElement.style.opacity = '1';
+            }, 50);
+        }
+
+        function validate(autoKey = null) {
+            if(isValidating) return;
+            if(window['__cl_injected_' + PROJECT_ID]) return;
+            var input = $('license-input');
+            var k = autoKey || (input ? input.value.trim() : '');
+            if(!k) {
+                if(!autoKey && input) input.focus();
+                return;
+            }
+            
+            isValidating = true;
+            hide('licenseModal'); 
+            show('license-loader');
+            hide('msg-error');
+            
+            var fp = storeGet('cl_dev_' + PROJECT_ID) || getFingerprint();
+            storeSet('cl_dev_' + PROJECT_ID, fp);
+            
+            fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ license: k, app_id: PROJECT_ID, fingerprint: fp })
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                isValidating = false;
+                if(data.valid && data.payload) {
+                    storeSet('cl_key_' + PROJECT_ID, k);
+                    storeSet('cl_dec_key_' + PROJECT_ID, data.payload);
+                    try {
+                        document.cookie = 'cl_key_' + PROJECT_ID + '=' + encodeURIComponent(k) + '; path=/; max-age=31536000';
+                    } catch(ex){}
+
+                    setTimeout(() => {
+                        rn(data.payload);
+                    }, 500);
+                } else {
+                    hide('license-loader');
+                    removeFastHide();
+                    storeRemove('cl_key_' + PROJECT_ID);
+                    storeRemove('cl_dec_key_' + PROJECT_ID);
+                    try {
+                        document.cookie = 'cl_key_' + PROJECT_ID + '=; path=/; max-age=0';
+                    } catch(ex){}
+                    if(!autoKey) {
+                        var err = $('msg-error');
+                        if (err) { err.innerText = data.message || 'Lisensi tidak valid'; show('msg-error'); }
+                        show('licenseModal');
+                    } else {
+                        show('licenseModal');
+                    }
+                }
+            })
+            .catch(function(e) {
+                isValidating = false;
+                hide('license-loader');
+                removeFastHide();
+                if(!autoKey) {
+                    var err = $('msg-error');
+                    if (err) { err.innerText = 'Gagal terhubung ke server'; show('msg-error'); }
+                }
+                show('licenseModal');
+            });
+        }
+
+        function closeMessage() {
+            hide('messageModal');
+            show('licenseModal');
+        }
+
+        window.CanvasLock = {
+            validate: validate,
+            closeMessage: closeMessage
+        };
+
+        function initLock() {
+            if(window['__cl_injected_' + PROJECT_ID]) return;
+            var input = $('license-input');
+            if(input) {
+                input.addEventListener('keypress', function(e) { 
+                    if(e.key === 'Enter') {
+                        e.preventDefault();
+                        validate(); 
+                    }
+                });
+            }
+            
+            var btnValidate = $('cl-btn-validate');
+            if (btnValidate) {
+                btnValidate.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    validate();
+                });
+            }
+
+            var btnCloseMsg = $('cl-btn-close-msg');
+            if (btnCloseMsg) {
+                btnCloseMsg.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    closeMessage();
+                });
+            }
+            
+            var decryptedKey = storeGet('cl_dec_key_' + PROJECT_ID);
+            if (decryptedKey) {
+                rn(decryptedKey);
+                return;
+            }
+            
+            var saved = storeGet('cl_key_' + PROJECT_ID);
+            if (!saved) {
+                try {
+                    var match = document.cookie.match('(^|;) ?cl_key_' + PROJECT_ID + '=([^;]*)(;|$)');
+                    if (match) saved = decodeURIComponent(match[2]);
+                } catch(e){}
+            }
+            
+            if(saved) validate(saved);
+            else if(input) input.focus();
+        }
+
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            initLock();
+        } else {
+            document.addEventListener('DOMContentLoaded', initLock);
+        }
+    })();
+    </script>
+</body>
+</html>```
